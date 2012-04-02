@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Sleepmask : A dumb terminal wrapper for the RemGlk interactive fiction glk interface library" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Sleepmask</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/ziz/sleepmask">Fork Me on GitHub</a>
+
+          <h1 id="project_title">Sleepmask</h1>
+          <h2 id="project_tagline">A dumb terminal wrapper for the RemGlk interactive fiction glk interface library</h2>
+
+          <section id="downloads">
+            <a class="zip_download_link" href="https://github.com/ziz/sleepmask/zipball/master">Download this project as a .zip file</a>
+            <a class="tar_download_link" href="https://github.com/ziz/sleepmask/tarball/master">Download this project as a tar.gz file</a>
+          </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>RemGlk?</h2>
+
+<p>The CheapGlk <a href="http://eblong.com/zarf/glk/index.html">Glk</a> library allows playing interactive fiction
+through a dumb terminal interface, such as IRC or a chat server,
+without the need for cursor positioning and similar;
+unfortunately, it has the significant lack that it cannot handle
+anything but a single buffer output window; no status bars,
+multiple windows, or any of the other fancy things that the Glk
+standard is capable of handling.</p>
+
+<p><a href="https://github.com/erkyrath/remglk">RemGlk</a> is a Glk library that, rather than displaying to
+a screen or console, handles input and output via JSON-serialized
+events.</p>
+
+<h2>So how does that help with CheapGlk?</h2>
+
+<p>Sleepmask seeks to bridge the gap between dumb terminals and
+full-featured IF by wrapping up RemGlk in a human-friendly dumb
+terminal interface. It maintains the state of grid buffers and
+prints them out in their entirety when they are updated; it
+outputs all line buffers as they are updated; it provides both
+line-based and character-based input (through the <code>/key &lt;x&gt;</code>
+metacommand).</p>
+
+<h2>Sounds great!  How do I use it?</h2>
+
+<p>Install the required gems - yajl-ruby and the development version of
+eventmachine.</p>
+
+<p>Download and compile RemGlk - at the time of writing, you'll also
+need the <a href="https://github.com/erkyrath/remglk/issues/1">save file name hack</a> to enable saving and
+loading.</p>
+
+<p>Download and compile your favorite Glk-enabled IF interpreter
+(for instance, <a href="https://github.com/erkyrath/glulxe">Glulxe</a>, the Glulx reference interpreter)
+against RemGlk.</p>
+
+<p>Edit sleepmachine.rb to point it at the location of your
+interpreter(s).</p>
+
+<p>(Get an appropriate story file - for instance, the venerable
+<a href="http://ifdb.tads.org/viewgame?id=fft6pu91j85y4acv">Adventure</a> has <code>advent.ulx</code> available.)</p>
+
+<p>Run it:</p>
+
+<pre><code>ruby sleepmachine.rb --interpreter glulxe ../advent.ulx
+</code></pre>
+
+<p>Type commands normally. </p>
+
+<p>If you use the commands <code>SAVE</code> or <code>RESTORE</code>, sleepmask will
+automatically prompt you for a filename; if your game does not use
+those commands for saving and restoring, you will need to type
+<code>/savename &lt;filename&gt;</code> before you attempt to save or restore to
+tell sleepmask what filename to use.</p>
+
+<p>If you need to press a key (rather than enter a line of input),
+use the <code>/key &lt;key&gt;</code> metacommand - any (non-whitespace) (latin-1) single
+character, or one of the special character names:</p>
+
+<p>space, left, right, up, down, return, delete, escape, tab, pageup,
+pagedown, home, end, func1, func2, func3, func4, func5, func6,
+func7, func8, func9, func10, func11, func12</p>
+
+<p><code>/quit</code> will quit the interpreter.</p>
+
+<h2>Known limitations</h2>
+
+<ul>
+<li>No differentiation between different line buffer windows.</li>
+<li>No support for hyperlink input.</li>
+<li>No way to query and interrogate the current state of grid
+buffers that are not being updated.</li>
+<li>Bad interpreter configuration support (currently hardcoded)</li>
+</ul><h2>License</h2>
+
+<p>Copyright (c) 2012 Justin de Vesine</p>
+
+<p>Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Sleepmask maintained by <a href="https://github.com/ziz">ziz</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
