@@ -14,12 +14,20 @@ STDOUT.sync = true
 
 execpath = File.dirname(File.realdirpath(File.absolute_path(__FILE__)))
 $interpreters = {
-  :glulxe => File.join(execpath, '..', 'glulxe-rem', 'glulxe'),
+  :glulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
   :nitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol'),
   :cheapglulxe => File.join(execpath, '..', 'glulxe-rem', 'glulxe'),
-  :debugcheapnitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol') + " -i -no-spell",
-  :fizmo => File.join(execpath, '..', 'fizmo-0.7.2', 'fizmo-glktermw', 'fizmo-glktermw'),
-  :cheaphe => File.join(execpath, '..', 'hugo-rem', 'glk', 'heglk')
+  :olddebugcheapnitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol') + " -i -no-spell",
+  :fizmo => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
+  :debugcheapnitfol => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
+  :cheaphe => File.join(execpath, '..', 'hugo-rem', 'glk', 'heglk'),
+  :cheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.release', 'tads', 'tadsr'),
+  :debugcheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.debug', 'tads', 'tadsr')
+}
+
+$skipsave = {
+  :cheaptads => true,
+  :debugcheaptads => true
 }
 options = {}
 
@@ -189,6 +197,9 @@ class RemHandler < EM::Connection
       s += "## "
     elsif run[:style] == "alert"
       s += "** "
+    elsif run[:style] == "input"
+      s += "\n> "
+      run[:text] = run[:text].upcase
     elsif ["normal", "preformatted"].index(run[:style]).nil?
       close = true
       s += "<#{run[:style]}>"
@@ -322,7 +333,7 @@ class KeyboardHandler < EM::Connection
       return
     end
     if data.downcase == "save" or data.downcase == "restore"
-      if @savefile.nil?
+      if @savefile.nil? and !$skipsave.key?($options[:interpreter])
         @saveflag = true
         @savecmd = data
         puts "%% File to #{data.downcase}:"
@@ -345,12 +356,15 @@ class KeyboardHandler < EM::Connection
       end
     end
   end
+  def unbind
+    EM.stop
+  end
 end
 
 
 EM.run{
   q = EM::Queue.new
-  puts "#{$interpreters[$options[:interpreter]]}  '#{gamepath}'"
+  puts "#{$interpreters[$options[:interpreter]]}  '#{gamepath}'" if $options[:debug]
   EM.popen("#{$interpreters[$options[:interpreter]]}  '#{gamepath}'", RemHandler, q)
   EM.open_keyboard(KeyboardHandler, q)
 }
