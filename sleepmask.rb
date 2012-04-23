@@ -16,7 +16,7 @@ execpath = File.dirname(File.realdirpath(File.absolute_path(__FILE__)))
 $interpreters = {
   :glulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
   :nitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol'),
-  :cheapglulxe => File.join(execpath, '..', 'glulxe-rem', 'glulxe'),
+  :cheapglulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
   :olddebugcheapnitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol') + " -i -no-spell",
   :fizmo => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
   :debugcheapnitfol => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
@@ -93,6 +93,13 @@ gamepath = File.expand_path(gamefile)
 if !File.exists? gamepath
   puts "%% No gamefile found: #{gamefile}"
   exit
+end
+
+def word_wrap(text, line_width = nil)
+  width = line_width.nil? ? $options[:width] : line_width
+  text.split("\n").collect do |line|
+    line.length > width ? line.gsub(/(.{1,#{width}})(\s+|$)/, "\\1\n").strip : line
+  end * "\n"
 end
 
 class RemHandler < EM::Connection
@@ -184,33 +191,72 @@ class RemHandler < EM::Connection
     send_data(init.to_json)
   end
 
-  def run_to_s(run)
+  def run_to_s(run, opts = {})
+    options = {
+      :solo => false
+    }
+
+    options.update(opts)
+
     close = false
-    s = ""
-    if run[:style] == "emphasized"
+    line = run[:text]
+    sopen = ""
+    sclose = ""
+
+    case run[:style]
+    when "emphasized"
       run[:style] = "em"
+    when "user1"
+      run[:style] = "u1"
+    when "user2"
+      run[:style] = "u2"
     end
 
-    if run[:style] == "header"
-      s += "# "
-    elsif run[:style] == "subheader"
-      s += "## "
-    elsif run[:style] == "alert"
-      s += "** "
-    elsif run[:style] == "input"
-      s += "\n> "
-      run[:text] = run[:text].upcase
-    elsif ["normal", "preformatted"].index(run[:style]).nil?
-      close = true
-      s += "<#{run[:style]}>"
+    case run[:style]
+    when "header"
+      if options[:solo]
+        sopen = "# "
+        sclose = ""
+      else
+        sopen = "<b>"
+        sclose = "</b>"
+      end
+    when "subheader"
+      if options[:solo]
+        sopen = "## "
+        sclose = ""
+      else
+        sopen = "<i>"
+        sclose = "</i>"
+      end
+    when "alert"
+      if options[:solo]
+        sopen = "** "
+        sclose = ""
+      else
+        sopen = "<strong>"
+        sopen = "</strong>"
+      end
+    when "input"
+      sopen = "\n> "
+      sclose = "\n"
+      line = line.upcase
+    when "normal"
+      sopen = ""
+      sclose = ""
+    when "preformatted"
+      sopen = ""
+      sclose = ""
+    else
+      sopen = "<#{run[:style]}>"
+      sclose = "</#{run[:style]}>"
     end
-    s += "#{run[:text]}"
-    if run.has_key? :hyperlink and !run[:hyperlink].empty?
-      s += "< #{run[:hyperlink]} >"
-    end
-    if close
-      s += "</#{run[:style]}>"
-    end
+
+    s = "#{sopen}#{line}#{sclose}"
+    #s = word_wrap(run[:text]).split("\n").collect do |l|
+      #"#{sopen}#{l}#{sclose}"
+    #end * "\n"
+
     return s
   end
 
@@ -272,8 +318,12 @@ class RemHandler < EM::Connection
             content[:text].each do |text|
               s = ""
               if text.has_key? :content and !text[:content].empty?
-                text[:content].each do |run|
-                  s += run_to_s(run)
+                if text[:content].length == 1
+                  s = run_to_s(text[:content][0], {:solo => true})
+                else
+                  text[:content].each do |run|
+                    s += run_to_s(run)
+                  end
                 end
               end
 
@@ -285,6 +335,7 @@ class RemHandler < EM::Connection
               end
             end
           end
+          window[:buffer] = word_wrap(window[:buffer].join("\n")).split("\n")
           puts window[:buffer].join("\n")
           window[:buffer] = [window[:buffer].last]
         end
