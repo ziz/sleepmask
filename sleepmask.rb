@@ -19,6 +19,7 @@ $interpreters = {
   :cheapglulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
   :olddebugcheapnitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol') + " -i -no-spell",
   :fizmo => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
+  :fizmodev => File.join(execpath, '..', 'fizmo-rem-dev', 'fizmo-glktermw', 'fizmo-glktermw'),
   :debugcheapnitfol => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
   :cheaphe => File.join(execpath, '..', 'hugo-rem', 'glk', 'heglk'),
   :cheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.release', 'tads', 'tadsr'),
@@ -103,18 +104,27 @@ def word_wrap(text, line_width = nil)
 end
 
 class RemHandler < EM::Connection
-  attr_reader :queue
+  attr_reader :inputqueue
+  attr_reader :remqueue
 
-  def initialize(q)
-    @queue = q
+  def initialize(inputq, remq)
+    @inputqueue = inputq
+    @remqueue = remq
     @gen = nil
     @windows = {}
     @inputs = []
 
-    cb = Proc.new do |action|
+    @queueinput = Proc.new do |data|
+      @remqueue.push data
+      @inputqueue.pop &@queueinput
+    end
+    @inputqueue.pop &@queueinput
+
+    @sendinput = Proc.new do |action|
       input_id = nil
       gen = nil
       msgtype = "line"
+      msgdetail = nil
       msg = action[:msg]
       if !@inputs.empty?
         @inputs.each do |input|
@@ -122,14 +132,15 @@ class RemHandler < EM::Connection
             input_id = input[:id]
             gen = input[:gen]
             break
-          end
-        end
-        @inputs.each do |input|
-          if input[:type] == "char"
+          elsif input[:type] == "char"
             msgtype = "char"
             input_id = input[:id]
             gen = input[:gen]
             break
+          elsif input[:type] == "fileref_prompt"
+            msgtype = "specialresponse"
+            msgdetail = input[:type]
+            gen = input[:gen]
           end
         end
       end
@@ -161,20 +172,24 @@ class RemHandler < EM::Connection
           :value => value.to_s
         }
 
-        if action.has_key? :savefile
-          message[:savefile] = action[:savefile]
-        end
-
         puts "%% Sending: #{message.to_json}" if $debug
+        send_data(message.to_json)
+      elsif msgdetail == "fileref_prompt"
+        message = {
+          :type => msgtype,
+          :gen => gen.to_i,
+          :response => "fileref_prompt",
+          :value => msg.to_s
+        }
+
+        puts "%% Sending special response: #{message.to_json}" if $debug
         send_data(message.to_json)
       else
         puts "%% Couldn't send: #{msg}"
       end
       #send_data(msg)
-      q.pop &cb
     end
 
-    q.pop &cb
   end
 
   def post_init
@@ -266,6 +281,10 @@ class RemHandler < EM::Connection
       return
     end
 
+    if obj.has_key? :gen
+      @gen = obj[:gen]
+    end
+
     if obj[:type] == "error"
       puts "%% Critical error."
       puts "%% Message: #{obj[:message]}"
@@ -290,9 +309,10 @@ class RemHandler < EM::Connection
       end
     end
 
-    if obj.has_key? :inputs
+    if obj.has_key?(:inputs) && !obj.has_key?(:specialinput)
       @inputs = obj[:inputs]
       puts "Inputs: #{@inputs.inspect}" if $debug
+      @remqueue.pop &@sendinput
     end
 
     if obj.has_key? :contents
@@ -342,6 +362,14 @@ class RemHandler < EM::Connection
       end
     end
 
+    if obj.has_key? :specialinput
+      @inputs = [obj[:specialinput]]
+      @inputs[0][:gen] = @gen
+      puts "Special inputs: #{@inputs.inspect}" if $debug
+      puts "%% Enter a #{obj[:specialinput][:filetype]} filename to #{obj[:specialinput][:filemode]}:"
+      @remqueue.pop &@sendinput
+    end
+
     #ap obj
 
   end
@@ -363,9 +391,6 @@ class KeyboardHandler < EM::Connection
 
   def initialize(q)
     @queue = q
-    @saveflag = false
-    @savecmd = nil
-    @savefile = nil
   end
 
   def receive_line(data)
@@ -374,38 +399,7 @@ class KeyboardHandler < EM::Connection
       puts "%% Quitting!"
       EM.stop
     end
-    matches = data.match(/^\/savefile (.*)/)
-    if matches
-      puts "%% Setting savefile to #{matches[1]}"
-      @savefile = matches[1].downcase.gsub(/[^a-z0-9]/, "")
-      return
-    elsif data == "/savefile"
-      puts "%% Current savefile is: #{@savefile.nil? ? '<not set>' : @savefile}'"
-      return
-    end
-    if data.downcase == "save" or data.downcase == "restore"
-      if @savefile.nil? and !$skipsave.key?($options[:interpreter])
-        @saveflag = true
-        @savecmd = data
-        puts "%% File to #{data.downcase}:"
-        return
-      end
-    end
-
-    if @saveflag
-      @saveflag = false
-      savefile = data.downcase.gsub(/[^a-z0-9]/, "")
-      puts "%% #{@savecmd.capitalize} file: #{savefile}"
-      @queue.push({:msg => @savecmd, :savefile => savefile})
-    else
-      if !@savefile.nil?
-        puts "%% sending savefile name: #{@savefile}"
-        @queue.push({:msg => data, :savefile => @savefile})
-        @savefile = nil
-      else
-        @queue.push({:msg => data})
-      end
-    end
+    @queue.push({:msg => data})
   end
   def unbind
     EM.stop
@@ -414,10 +408,11 @@ end
 
 
 EM.run{
-  q = EM::Queue.new
+  inputq = EM::Queue.new
+  remq = EM::Queue.new
   puts "#{$interpreters[$options[:interpreter]]}  '#{gamepath}'" if $options[:debug]
-  EM.popen("#{$interpreters[$options[:interpreter]]}  '#{gamepath}'", RemHandler, q)
-  EM.open_keyboard(KeyboardHandler, q)
+  EM.popen("#{$interpreters[$options[:interpreter]]}  '#{gamepath}'", RemHandler, inputq, remq)
+  EM.open_keyboard(KeyboardHandler, inputq)
 }
 
 
