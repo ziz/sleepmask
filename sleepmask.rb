@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# vim:set fileencoding=UTF-8:
 # Sleepmask
 # A dumb terminal wrapper for RemGlk
 # Copyright (c) 2012 Justin de Vesine
@@ -99,6 +100,11 @@ end
 def word_wrap(text, line_width = nil)
   width = line_width.nil? ? $options[:width] : line_width
   text.split("\n").collect do |line|
+    begin
+      # convert nonbreaking spaces to normal spaces
+      line.gsub!(/\xc2\xa0/u, ' ') 
+    rescue
+    end
     line.length > width ? line.gsub(/(.{1,#{width}})(\s+|$)/, "\\1\n").strip : line
   end * "\n"
 end
