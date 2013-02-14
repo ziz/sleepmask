@@ -14,6 +14,10 @@ require 'optparse'
 STDOUT.sync = true
 
 execpath = File.dirname(File.realdirpath(File.absolute_path(__FILE__)))
+
+# Sleepmask talks to RemGlk-compiled interpreters.  Although it would be most
+# useful to allow an external configuration file for these, given the highly
+# restricted target audience, this has not been a significant hardship.
 $interpreters = {
   :glulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
   :nitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol'),
@@ -27,10 +31,6 @@ $interpreters = {
   :debugcheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.debug', 'tads', 'tadsr')
 }
 
-$skipsave = {
-  :cheaptads => true,
-  :debugcheaptads => true
-}
 options = {}
 
 optparse = OptionParser.new do |opts|
@@ -97,6 +97,8 @@ if !File.exists? gamepath
   exit
 end
 
+# Helper to wrap text by words.  Does not rewrap text already wrapped to a
+# smaller window size.
 def word_wrap(text, line_width = nil)
   width = line_width.nil? ? $options[:width] : line_width
   text.split("\n").collect do |line|
@@ -120,12 +122,19 @@ class RemHandler < EM::Connection
     @windows = {}
     @inputs = []
 
+    # Use two stacked queues for input to handle an inconsistency in EM queue
+    # timing - otherwise, under some circumstances, an input could either be 
+    # lost (if it happened too quickly) or improperly sent when the game state
+    # did not expect it.
     @queueinput = Proc.new do |data|
       @remqueue.push data
       @inputqueue.pop &@queueinput
     end
     @inputqueue.pop &@queueinput
 
+    # Handler for finding the first appropriate input field referenced in the 
+    # game state message and sending back a queued command (or special command,
+    # as in game saves)
     @sendinput = Proc.new do |action|
       input_id = nil
       gen = nil
@@ -199,8 +208,11 @@ class RemHandler < EM::Connection
   end
 
   def post_init
+    # Start up the streaming JSON parser
     @parser = Yajl::Parser.new(:symbolize_keys => true)
     @parser.on_parse_complete = method(:object_parsed)
+
+    # Send the initial handshake message to the game
     init = {
       :type => "init",
       :gen => 0,
@@ -212,6 +224,9 @@ class RemHandler < EM::Connection
     send_data(init.to_json)
   end
 
+
+  # Convert a raw "run" (a Glk text segment with a given format) to a
+  # Sleepmask formatted string (using pseudo-html styles, among others)
   def run_to_s(run, opts = {})
     options = {
       :solo => false
@@ -281,6 +296,9 @@ class RemHandler < EM::Connection
     return s
   end
 
+  # When a complete parsed JSON object (one game state change, from the
+  # game) is read, handle it; this includes sending user input back 
+  # if the game state change allows it.
   def object_parsed(obj)
     if obj[:type] == "pass"
       puts "%% Passing." if $debug
@@ -303,6 +321,7 @@ class RemHandler < EM::Connection
       return
     end
 
+    # Handle creation of "windows" (content areas, including status bars)
     if obj.has_key? :windows
       obj[:windows].each do |window|
         puts "%% Window: #{window.inspect}" if $debug
@@ -315,6 +334,8 @@ class RemHandler < EM::Connection
       end
     end
 
+    # If the game state allows an input to be sent at this point, send the next
+    # available command
     if obj.has_key?(:inputs) && !obj.has_key?(:specialinput)
       @inputs = obj[:inputs]
       puts "Inputs: #{@inputs.inspect}" if $debug
@@ -324,6 +345,8 @@ class RemHandler < EM::Connection
     if obj.has_key? :contents
       obj[:contents].each do |content|
         puts "%% Content: #{content.inspect}" if $debug
+        # It is a validly crashy error if a game state object comes in with
+        # content for a window that does not exist.
         window = @windows[content[:id]]
         if window[:type] == "grid"
           content[:lines].each do |line|
@@ -368,6 +391,8 @@ class RemHandler < EM::Connection
       end
     end
 
+    # If the game state allows a special input to be sent at this point (usually a 
+    # save/restore filename), handle it here
     if obj.has_key? :specialinput
       @inputs = [obj[:specialinput]]
       @inputs[0][:gen] = @gen
@@ -379,10 +404,13 @@ class RemHandler < EM::Connection
     #ap obj
 
   end
+
+  # Pass incoming data (from the game) to the streaming JSON parser
   def receive_data data
     puts "%% Parser got: #{data}" if $options[:debug]
     @parser << data
   end
+
   def unbind
     puts "#{$options[:interpreter]} quit with exit status: #{get_status.exitstatus}"
     EM.stop
