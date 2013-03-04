@@ -11,6 +11,8 @@ require 'yajl/json_gem'
 require 'eventmachine'
 require 'optparse'
 
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
 STDOUT.sync = true
 
 execpath = File.dirname(File.realdirpath(File.absolute_path(__FILE__)))
@@ -19,15 +21,20 @@ execpath = File.dirname(File.realdirpath(File.absolute_path(__FILE__)))
 # useful to allow an external configuration file for these, given the highly
 # restricted target audience, this has not been a significant hardship.
 $interpreters = {
-  :glulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
+  :glulxe => File.join(execpath, '..', 'glulxe-dev-rem', 'glulxe'),
+  :bocfel => File.join(execpath, '..', 'bocfel-0.6.2', 'bocfel'),
+  :git => File.join(execpath, '..', 'git-131', 'git'),
   :nitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol'),
-  :cheapglulxe => File.join(execpath, '..', 'glulxe-047-rem', 'glulxe'),
+  :cheapglulxe => File.join(execpath, '..', 'git-131', 'git'),
+  # :cheapglulxe => File.join(execpath, '..', 'glulxe-dev-rem', 'glulxe'),
   :olddebugcheapnitfol => File.join(execpath, '..', 'nitfol-0.5-rem', 'remnitfol') + " -i -no-spell",
   :fizmo => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
   :fizmodev => File.join(execpath, '..', 'fizmo-rem-dev', 'fizmo-glktermw', 'fizmo-glktermw'),
   :debugcheapnitfol => File.join(execpath, '..', 'fizmo-rem', 'fizmo-glktermw', 'fizmo-glktermw'),
+  #:debugcheapnitfol => File.join(execpath, '..', 'bocfel-0.6.2', 'bocfel'),
   :cheaphe => File.join(execpath, '..', 'hugo-rem', 'glk', 'heglk'),
-  :cheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.release', 'tads', 'tadsr'),
+  #:cheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.release', 'tads', 'tadsr'),
+  :cheaptads => File.join(execpath, '..', 'garglk-read-only', 'build', 'linux.release', 'tads', 'tadsr'),
   :debugcheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.debug', 'tads', 'tadsr')
 }
 
@@ -39,7 +46,7 @@ optparse = OptionParser.new do |opts|
   options[:verbose] = false
   options[:width] = 70
   options[:height] = 24 
-  options[:interpreter] = :glulxe
+  options[:interpreter] = :git
 
   opts.on('-i', '--interpreter TERP', 'Interpreter') do |terp|
     if $interpreters.has_key? terp.to_sym
