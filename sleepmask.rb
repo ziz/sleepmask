@@ -336,14 +336,14 @@ class RemHandler < EM::Connection
 
     # If the game state allows an input to be sent at this point, send the next
     # available command
-    if obj.has_key?(:inputs) && !obj.has_key?(:specialinput)
-      @inputs = obj[:inputs]
+    if obj.has_key?(:input) && !obj.has_key?(:specialinput)
+      @inputs = obj[:input]
       puts "Inputs: #{@inputs.inspect}" if $debug
       @remqueue.pop &@sendinput
     end
 
-    if obj.has_key? :contents
-      obj[:contents].each do |content|
+    if obj.has_key? :content
+      obj[:content].each do |content|
         puts "%% Content: #{content.inspect}" if $debug
         # It is a validly crashy error if a game state object comes in with
         # content for a window that does not exist.
