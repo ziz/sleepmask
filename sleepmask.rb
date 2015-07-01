@@ -34,8 +34,10 @@ $interpreters = {
   #:debugcheapnitfol => File.join(execpath, '..', 'bocfel-0.6.2', 'bocfel'),
   :cheaphe => File.join(execpath, '..', 'hugo-rem', 'glk', 'heglk'),
   #:cheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.release', 'tads', 'tadsr'),
-  :cheaptads => File.join(execpath, '..', 'garglk-read-only', 'build', 'linux.release', 'tads', 'tadsr'),
-  :debugcheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.debug', 'tads', 'tadsr')
+  #:cheaptads => File.join(execpath, '..', 'garglk-read-only', 'build', 'linux.release', 'tads', 'tadsr'),
+  :cheaptads => File.join(execpath, '..', 'frobtads-git', 'frobglk') + " -d . -sd . ",
+  :debugcheaptads => File.join(execpath, '..', 'floyd-tads-rem', 'build', 'linux.debug', 'tads', 'tadsr'),
+  :frobglk => File.join(execpath, '..', 'frobtads-git', 'frobglk') + " -d . -sd . "
 }
 
 options = {}
