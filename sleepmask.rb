@@ -345,12 +345,20 @@ class RemHandler < EM::Connection
 
     # If the game state allows an input to be sent at this point, send the next
     # available command
+    # remglk <0.2.1 compat
+    if obj.has_key?(:inputs)
+      obj[:input] = obj[:inputs]
+    end
     if obj.has_key?(:input) && !obj.has_key?(:specialinput)
       @inputs = obj[:input]
       puts "Inputs: #{@inputs.inspect}" if $debug
       @remqueue.pop &@sendinput
     end
 
+    # remglk <0.2.1 compat
+    if obj.has_key?(:contents)
+      obj[:content] = obj[:contents]
+    end
     if obj.has_key? :content
       obj[:content].each do |content|
         puts "%% Content: #{content.inspect}" if $debug
